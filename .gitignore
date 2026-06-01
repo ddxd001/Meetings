@@ -4,3 +4,7 @@ __pycache__/
 venv/
 *.db
 *.sqlite
+build/
+dist/
+installer/
+*.spec

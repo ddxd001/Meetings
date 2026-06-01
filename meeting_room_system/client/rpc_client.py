@@ -4,12 +4,17 @@ import json
 import socket
 import struct
 
+from meeting_room_system.config import client_settings
+
 
 class RpcClient:
-    def __init__(self, host="127.0.0.1", port=8888, timeout=5):
+    def __init__(self, host=None, port=None, timeout=None):
+        default_host, default_port, default_timeout = client_settings()
         self.host = host
-        self.port = port
-        self.timeout = timeout
+        self.port = port if port is not None else default_port
+        self.timeout = timeout if timeout is not None else default_timeout
+        if self.host is None:
+            self.host = default_host
 
     def request(self, action, data=None):
         payload = {"action": action, "data": data or {}}
@@ -31,4 +36,3 @@ class RpcClient:
             chunks.append(chunk)
             remaining -= len(chunk)
         return b"".join(chunks)
-

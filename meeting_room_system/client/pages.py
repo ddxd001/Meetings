@@ -3,10 +3,20 @@
 import calendar
 import tkinter as tk
 from datetime import datetime, timedelta
+from math import ceil
+from pathlib import Path
 from tkinter import messagebox, ttk
 
 from .rpc_client import RpcClient
 
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    Image = None
+    ImageTk = None
+
+
+ASSET_DIR = Path(__file__).resolve().parent / "assets"
 
 ROOM_OPTIONS = [
     f"{floor}层10人{index}"
@@ -31,8 +41,48 @@ class MeetingRoomApp(tk.Tk):
         self.current_frame = None
         self.result_table = None
         self.room_table = None
+        self._brand_images = {}
+        self._load_brand_assets()
         self._setup_style()
+        if self._brand_images.get("app_icon"):
+            self.iconphoto(True, self._brand_images["app_icon"])
         self.show_login()
+
+    def _load_image(self, filename, max_size=None):
+        path = ASSET_DIR / filename
+        if not path.exists():
+            return None
+
+        if Image is not None and ImageTk is not None:
+            try:
+                image = Image.open(path).convert("RGBA")
+                if max_size is not None:
+                    image.thumbnail(max_size, Image.LANCZOS)
+                return ImageTk.PhotoImage(image)
+            except Exception:
+                return None
+
+        try:
+            image = tk.PhotoImage(file=str(path))
+        except tk.TclError:
+            return None
+
+        if max_size is not None:
+            width, height = image.width(), image.height()
+            scale = max(width / max_size[0], height / max_size[1], 1)
+            factor = ceil(scale)
+            if factor > 1:
+                image = image.subsample(factor, factor)
+        return image
+
+    def _load_brand_assets(self):
+        self._brand_images = {
+            "app_icon": self._load_image("logo.png", (64, 64)),
+            "app_header": self._load_image("logo.png", (36, 36)),
+            "app_login": self._load_image("logo.png", (82, 82)),
+            "xdu_header": self._load_image("XDU.webp", (176, 48)),
+            "xdu_login": self._load_image("XDU.webp", (660, 192)),
+        }
 
     def _setup_style(self):
         self.configure(bg="#f6f8fa")
@@ -107,7 +157,11 @@ class MeetingRoomApp(tk.Tk):
     def _header(self, parent, title, show_back=False, back_command=None):
         header = ttk.Frame(parent)
         header.pack(fill=tk.X, pady=(0, 16))
+        if self._brand_images.get("app_header"):
+            ttk.Label(header, image=self._brand_images["app_header"]).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Label(header, text=title, style="Title.TLabel").pack(side=tk.LEFT)
+        if self._brand_images.get("xdu_header"):
+            ttk.Label(header, image=self._brand_images["xdu_header"]).pack(side=tk.RIGHT, padx=(12, 0))
         if show_back:
             ttk.Button(header, text="返回", command=back_command or self._home_command()).pack(side=tk.RIGHT, padx=(8, 0))
         if self.current_user:
@@ -201,10 +255,13 @@ class MeetingRoomApp(tk.Tk):
     def show_login(self):
         frame = self._clear()
         frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
+        frame.rowconfigure(2, weight=1)
+
+        if self._brand_images.get("app_login"):
+            ttk.Label(frame, image=self._brand_images["app_login"]).grid(row=0, column=0, sticky="nw", padx=24, pady=(20, 0))
 
         card = ttk.Frame(frame, style="Card.TFrame", padding=32)
-        card.grid(row=0, column=0, sticky="n", padx=24, pady=(80, 24))
+        card.grid(row=1, column=0, sticky="n", padx=24, pady=(8, 20))
         card.columnconfigure(0, weight=1)
 
         ttk.Label(card, text="会议室预约管理系统", style="Title.TLabel", background="#ffffff").grid(row=0, column=0, sticky="w")
@@ -217,6 +274,8 @@ class MeetingRoomApp(tk.Tk):
         entry.bind("<Return>", lambda _event: self.login())
         ttk.Button(card, text="登录", style="Primary.TButton", command=self.login).grid(row=4, column=0, sticky="ew")
         entry.focus_set()
+        if self._brand_images.get("xdu_login"):
+            ttk.Label(frame, image=self._brand_images["xdu_login"]).grid(row=3, column=0, sticky="s", pady=(0, 18))
 
     def login(self):
         username = self.login_name.get().strip()
@@ -551,4 +610,3 @@ class MeetingRoomApp(tk.Tk):
                     meeting["attendeeCount"],
                 ),
             )
-
